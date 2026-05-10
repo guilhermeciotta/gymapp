@@ -1,0 +1,15 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+.cursor/
+.zed/
+
+# Docker volumes (não versionar dados do banco)
+docker/volumes/
+
+# Claude Code (configurações locais)
+.claude/

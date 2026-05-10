@@ -1,0 +1,118 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Conversation;
+use App\Services\OpenAIService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
+class ChatController extends Controller
+{
+    public function __construct(private OpenAIService $openAI) {}
+
+    public function indexConversations(Request $request): JsonResponse
+    {
+        $conversations = $request->user()
+            ->conversations()
+            ->latest()
+            ->get(['id', 'title', 'created_at']);
+
+        return response()->json($conversations);
+    }
+
+    public function storeConversation(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'title' => 'nullable|string|max:255',
+        ]);
+
+        $conversation = $request->user()->conversations()->create([
+            'title' => $data['title'] ?? 'Nova conversa',
+        ]);
+
+        return response()->json($conversation, 201);
+    }
+
+    public function showMessages(Request $request, Conversation $conversation): JsonResponse
+    {
+        $this->authorize('view', $conversation);
+
+        return response()->json($conversation->messages);
+    }
+
+    public function sendMessage(Request $request, Conversation $conversation): StreamedResponse
+    {
+        $this->authorize('view', $conversation);
+
+        $request->validate([
+            'content' => 'required|string|max:4000',
+        ]);
+
+        $conversation->messages()->create([
+            'role' => 'user',
+            'content' => $request->content,
+        ]);
+
+        return response()->stream(function () use ($conversation) {
+            foreach ($this->openAI->streamChat($conversation) as $token) {
+                echo "data: " . json_encode(['token' => $token]) . "\n\n";
+                ob_flush();
+                flush();
+            }
+            echo "data: [DONE]\n\n";
+            ob_flush();
+            flush();
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'X-Accel-Buffering' => 'no',
+        ]);
+    }
+
+    public function saveWorkout(Request $request, Conversation $conversation): JsonResponse
+    {
+        $this->authorize('view', $conversation);
+
+        $lastAssistantMessage = $conversation->messages()
+            ->where('role', 'assistant')
+            ->latest()
+            ->first();
+
+        if (!$lastAssistantMessage) {
+            return response()->json(['message' => 'Nenhuma resposta da AI encontrada.'], 422);
+        }
+
+        $workoutData = OpenAIService::extractWorkoutJson($lastAssistantMessage->content);
+
+        if (!$workoutData) {
+            return response()->json(['message' => 'Nenhum treino estruturado encontrado na conversa.'], 422);
+        }
+
+        $workout = $request->user()->workouts()->create([
+            'name' => $workoutData['name'],
+            'objective' => $workoutData['objective'] ?? null,
+        ]);
+
+        foreach ($workoutData['days'] ?? [] as $index => $dayData) {
+            $day = $workout->days()->create([
+                'name' => $dayData['name'],
+                'order' => $dayData['order'] ?? $index,
+            ]);
+
+            foreach ($dayData['exercises'] ?? [] as $exIndex => $exerciseData) {
+                $day->exercises()->create([
+                    'name' => $exerciseData['name'],
+                    'sets' => $exerciseData['sets'] ?? null,
+                    'reps' => $exerciseData['reps'] ?? null,
+                    'rest_seconds' => $exerciseData['rest_seconds'] ?? null,
+                    'notes' => $exerciseData['notes'] ?? null,
+                    'order' => $exerciseData['order'] ?? $exIndex,
+                ]);
+            }
+        }
+
+        return response()->json($workout->load('days.exercises'), 201);
+    }
+}
