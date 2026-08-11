@@ -23,12 +23,28 @@ function hasWorkoutJson(content: string) {
   return content.includes(WORKOUT_JSON_MARKER)
 }
 
+// Corta o marcador (e o que vier depois) mesmo quando só um prefixo dele
+// já chegou pelo stream, evitando piscar o JSON bruto na tela.
+function stripPartialMarker(content: string, marker: string) {
+  const fullIdx = content.indexOf(marker)
+  if (fullIdx !== -1) return content.slice(0, fullIdx)
+
+  const maxPrefix = Math.min(marker.length - 1, content.length)
+  for (let len = maxPrefix; len > 0; len--) {
+    if (content.endsWith(marker.slice(0, len))) {
+      return content.slice(0, content.length - len)
+    }
+  }
+  return content
+}
+
 export default function Chat() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const bottomRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null)
   const [streamingContent, setStreamingContent] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [savingWorkout, setSavingWorkout] = useState(false)
@@ -61,6 +77,7 @@ export default function Chat() {
 
     const userMessage = input.trim()
     setInput('')
+    setPendingMessage(userMessage)
     setIsStreaming(true)
     setStreamingContent('')
 
@@ -107,7 +124,8 @@ export default function Chat() {
     } finally {
       setIsStreaming(false)
       setStreamingContent('')
-      refetchMessages()
+      await refetchMessages()
+      setPendingMessage(null)
     }
   }
 
@@ -218,13 +236,33 @@ export default function Chat() {
                 </div>
               ))}
 
-              {isStreaming && streamingContent && (
+              {pendingMessage && (
+                <div className="flex justify-end">
+                  <div className="max-w-2xl rounded-2xl px-4 py-3 bg-green-600 text-white opacity-70">
+                    <p>{pendingMessage}</p>
+                  </div>
+                </div>
+              )}
+
+              {isStreaming && (
                 <div className="flex justify-start">
                   <div className="max-w-2xl bg-gray-900 rounded-2xl px-4 py-3">
-                    <div className="prose prose-invert prose-sm max-w-none">
-                      <ReactMarkdown>{streamingContent}</ReactMarkdown>
-                    </div>
-                    <span className="inline-block w-2 h-4 bg-green-400 animate-pulse ml-1" />
+                    {streamingContent ? (
+                      <div className="prose prose-invert prose-sm max-w-none">
+                        <ReactMarkdown>
+                          {stripPartialMarker(streamingContent, WORKOUT_JSON_MARKER)}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <div className="flex gap-1 py-1">
+                        <span className="w-2 h-2 rounded-full bg-green-400 animate-bounce [animation-delay:-0.3s]" />
+                        <span className="w-2 h-2 rounded-full bg-green-400 animate-bounce [animation-delay:-0.15s]" />
+                        <span className="w-2 h-2 rounded-full bg-green-400 animate-bounce" />
+                      </div>
+                    )}
+                    {streamingContent && (
+                      <span className="inline-block w-2 h-4 bg-green-400 animate-pulse ml-1" />
+                    )}
                   </div>
                 </div>
               )}
