@@ -30,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Chat
     Route::get('/conversations', [ChatController::class, 'indexConversations']);
     Route::post('/conversations', [ChatController::class, 'storeConversation']);
+    Route::delete('/conversations/{conversation}', [ChatController::class, 'destroyConversation']);
     Route::get('/conversations/{conversation}/messages', [ChatController::class, 'showMessages']);
     Route::post('/conversations/{conversation}/messages', [ChatController::class, 'sendMessage']);
     Route::post('/conversations/{conversation}/save-workout', [ChatController::class, 'saveWorkout']);

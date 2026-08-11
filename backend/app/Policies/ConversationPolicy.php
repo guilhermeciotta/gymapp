@@ -11,4 +11,9 @@ class ConversationPolicy
     {
         return $user->id === $conversation->user_id;
     }
+
+    public function delete(User $user, Conversation $conversation): bool
+    {
+        return $user->id === $conversation->user_id;
+    }
 }

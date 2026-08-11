@@ -6,6 +6,7 @@ use App\Models\Conversation;
 use App\Services\AIService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ChatController extends Controller
@@ -32,7 +33,21 @@ class ChatController extends Controller
             'title' => $data['title'] ?? 'Nova conversa',
         ]);
 
+        $conversation->messages()->create([
+            'role' => 'assistant',
+            'content' => 'Vamos começar?',
+        ]);
+
         return response()->json($conversation, 201);
+    }
+
+    public function destroyConversation(Request $request, Conversation $conversation): JsonResponse
+    {
+        $this->authorize('delete', $conversation);
+
+        $conversation->delete();
+
+        return response()->json(null, 204);
     }
 
     public function showMessages(Request $request, Conversation $conversation): JsonResponse
@@ -49,6 +64,10 @@ class ChatController extends Controller
         $request->validate([
             'content' => 'required|string|max:4000',
         ]);
+
+        if ($conversation->title === 'Nova conversa' && $conversation->messages()->where('role', 'user')->doesntExist()) {
+            $conversation->update(['title' => Str::limit($request->content, 40)]);
+        }
 
         $conversation->messages()->create([
             'role' => 'user',
@@ -81,7 +100,7 @@ class ChatController extends Controller
 
         $lastAssistantMessage = $conversation->messages()
             ->where('role', 'assistant')
-            ->latest()
+            ->reorder('created_at', 'desc')
             ->first();
 
         if (!$lastAssistantMessage) {

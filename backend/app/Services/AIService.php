@@ -52,13 +52,15 @@ PROMPT;
 
     public function streamChat(Conversation $conversation): \Generator
     {
-        $contents = $conversation->messages()
-            ->orderBy('created_at')
-            ->get()
+        $messages = $conversation->messages()->orderBy('created_at')->get();
+        $firstUserIndex = $messages->search(fn($m) => $m->role === 'user');
+
+        $contents = ($firstUserIndex === false ? $messages->slice(0, 0) : $messages->slice($firstUserIndex))
             ->map(fn($m) => [
                 'role' => $m->role === 'assistant' ? 'model' : 'user',
                 'parts' => [['text' => $m->content]],
             ])
+            ->values()
             ->toArray();
 
         $model = config('services.ai.model');
@@ -73,7 +75,7 @@ PROMPT;
                 'json' => [
                     'contents' => $contents,
                     'systemInstruction' => ['parts' => [['text' => self::SYSTEM_PROMPT]]],
-                    'generationConfig' => ['maxOutputTokens' => 4096],
+                    'generationConfig' => ['maxOutputTokens' => 8192],
                 ],
                 'stream' => true,
             ]

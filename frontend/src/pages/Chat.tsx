@@ -18,9 +18,14 @@ interface Conversation {
 }
 
 const WORKOUT_JSON_MARKER = '===WORKOUT_JSON_START==='
+const WORKOUT_JSON_END_MARKER = '===WORKOUT_JSON_END==='
 
+// Só considera "completo" quando o marcador de fechamento também chegou,
+// que é a única situação em que dá pra extrair e salvar o treino.
 function hasWorkoutJson(content: string) {
-  return content.includes(WORKOUT_JSON_MARKER)
+  const startIdx = content.indexOf(WORKOUT_JSON_MARKER)
+  if (startIdx === -1) return false
+  return content.indexOf(WORKOUT_JSON_END_MARKER, startIdx) !== -1
 }
 
 // Corta o marcador (e o que vier depois) mesmo quando só um prefixo dele
@@ -69,6 +74,17 @@ export default function Chat() {
     const { data } = await api.post('/conversations', { title: 'Nova conversa' })
     queryClient.invalidateQueries({ queryKey: ['conversations'] })
     navigate(`/chat/${data.id}`)
+  }
+
+  const deleteConversation = async (conversationId: number) => {
+    if (!confirm('Excluir esta conversa? Essa ação não pode ser desfeita.')) return
+
+    await api.delete(`/conversations/${conversationId}`)
+    queryClient.invalidateQueries({ queryKey: ['conversations'] })
+
+    if (conversationId.toString() === id) {
+      navigate('/chat')
+    }
   }
 
   const sendMessage = async (e: FormEvent) => {
@@ -122,9 +138,10 @@ export default function Chat() {
         }
       }
     } finally {
+      await refetchMessages()
+      queryClient.invalidateQueries({ queryKey: ['conversations'] })
       setIsStreaming(false)
       setStreamingContent('')
-      await refetchMessages()
       setPendingMessage(null)
     }
   }
@@ -164,17 +181,39 @@ export default function Chat() {
 
         <div className="flex-1 overflow-y-auto p-2">
           {conversations?.map((c) => (
-            <Link
+            <div
               key={c.id}
-              to={`/chat/${c.id}`}
-              className={`block px-3 py-2 rounded-lg text-sm mb-1 transition-colors ${
+              className={`group flex items-center gap-1 rounded-lg mb-1 transition-colors ${
                 c.id.toString() === id
                   ? 'bg-green-500/20 text-green-400'
                   : 'text-gray-400 hover:bg-gray-800'
               }`}
             >
-              {c.title}
-            </Link>
+              <Link
+                to={`/chat/${c.id}`}
+                className="flex-1 min-w-0 px-3 py-2 text-sm truncate"
+                title={c.title}
+              >
+                {c.title}
+              </Link>
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  deleteConversation(c.id)
+                }}
+                className="mr-1 p-1.5 rounded-md text-gray-500 opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-opacity"
+                title="Excluir conversa"
+                aria-label="Excluir conversa"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path
+                    fillRule="evenodd"
+                    d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482 41.03 41.03 0 0 0-2.365-.298V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
           ))}
         </div>
       </aside>
@@ -221,7 +260,7 @@ export default function Chat() {
                     {msg.role === 'assistant' ? (
                       <div className="prose prose-invert prose-sm max-w-none">
                         <ReactMarkdown>
-                          {msg.content.replace(/===WORKOUT_JSON_START===[\s\S]*?===WORKOUT_JSON_END===/g, '')}
+                          {stripPartialMarker(msg.content, WORKOUT_JSON_MARKER)}
                         </ReactMarkdown>
                         {hasWorkoutJson(msg.content) && (
                           <p className="text-green-400 text-sm mt-2 not-prose">
