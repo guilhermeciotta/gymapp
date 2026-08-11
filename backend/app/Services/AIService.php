@@ -3,9 +3,9 @@
 namespace App\Services;
 
 use App\Models\Conversation;
-use OpenAI\Laravel\Facades\OpenAI;
+use GuzzleHttp\Client;
 
-class OpenAIService
+class AIService
 {
     private const SYSTEM_PROMPT = <<<PROMPT
 Você é um personal trainer especialista e nutricionista. Ajude o usuário a montar o treino ideal para a academia, levando em conta:
@@ -43,31 +43,64 @@ Ao finalizar a montagem de um treino completo, inclua no final da sua resposta u
 Responda sempre em português do Brasil de forma amigável e motivadora.
 PROMPT;
 
+    private Client $http;
+
+    public function __construct()
+    {
+        $this->http = new Client();
+    }
+
     public function streamChat(Conversation $conversation): \Generator
     {
-        $history = $conversation->messages()
+        $contents = $conversation->messages()
             ->orderBy('created_at')
             ->get()
-            ->map(fn($m) => ['role' => $m->role, 'content' => $m->content])
+            ->map(fn($m) => [
+                'role' => $m->role === 'assistant' ? 'model' : 'user',
+                'parts' => [['text' => $m->content]],
+            ])
             ->toArray();
 
-        $stream = OpenAI::chat()->createStreamed([
-            'model' => 'gpt-4o',
-            'messages' => array_merge(
-                [['role' => 'system', 'content' => self::SYSTEM_PROMPT]],
-                $history
-            ),
-            'max_tokens' => 4096,
-            'temperature' => 0.7,
-        ]);
+        $model = config('services.ai.model');
+
+        $response = $this->http->post(
+            "https://generativelanguage.googleapis.com/v1beta/models/{$model}:streamGenerateContent",
+            [
+                'query' => [
+                    'key' => config('services.ai.key'),
+                    'alt' => 'sse',
+                ],
+                'json' => [
+                    'contents' => $contents,
+                    'systemInstruction' => ['parts' => [['text' => self::SYSTEM_PROMPT]]],
+                    'generationConfig' => ['maxOutputTokens' => 4096],
+                ],
+                'stream' => true,
+            ]
+        );
 
         $fullContent = '';
+        $body = $response->getBody();
+        $buffer = '';
 
-        foreach ($stream as $chunk) {
-            $delta = $chunk->choices[0]->delta->content ?? '';
-            if ($delta !== '') {
-                $fullContent .= $delta;
-                yield $delta;
+        while (!$body->eof()) {
+            $buffer .= $body->read(1024);
+
+            while (($newlinePos = strpos($buffer, "\n")) !== false) {
+                $line = trim(substr($buffer, 0, $newlinePos));
+                $buffer = substr($buffer, $newlinePos + 1);
+
+                if (!str_starts_with($line, 'data: ')) {
+                    continue;
+                }
+
+                $chunk = json_decode(substr($line, 6), true);
+                $text = $chunk['candidates'][0]['content']['parts'][0]['text'] ?? null;
+
+                if ($text !== null) {
+                    $fullContent .= $text;
+                    yield $text;
+                }
             }
         }
 

@@ -3,14 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Conversation;
-use App\Services\OpenAIService;
+use App\Services\AIService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ChatController extends Controller
 {
-    public function __construct(private OpenAIService $openAI) {}
+    public function __construct(private AIService $ai) {}
 
     public function indexConversations(Request $request): JsonResponse
     {
@@ -56,13 +56,17 @@ class ChatController extends Controller
         ]);
 
         return response()->stream(function () use ($conversation) {
-            foreach ($this->openAI->streamChat($conversation) as $token) {
+            foreach ($this->ai->streamChat($conversation) as $token) {
                 echo "data: " . json_encode(['token' => $token]) . "\n\n";
-                ob_flush();
+                if (ob_get_level() > 0) {
+                    ob_flush();
+                }
                 flush();
             }
             echo "data: [DONE]\n\n";
-            ob_flush();
+            if (ob_get_level() > 0) {
+                ob_flush();
+            }
             flush();
         }, 200, [
             'Content-Type' => 'text/event-stream',
@@ -84,7 +88,7 @@ class ChatController extends Controller
             return response()->json(['message' => 'Nenhuma resposta da AI encontrada.'], 422);
         }
 
-        $workoutData = OpenAIService::extractWorkoutJson($lastAssistantMessage->content);
+        $workoutData = AIService::extractWorkoutJson($lastAssistantMessage->content);
 
         if (!$workoutData) {
             return response()->json(['message' => 'Nenhum treino estruturado encontrado na conversa.'], 422);
