@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import Chat from './pages/Chat'
+import CreateWorkout from './pages/CreateWorkout'
 import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -28,6 +29,14 @@ export default function App() {
         element={
           <PrivateRoute>
             <Dashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/workouts/new"
+        element={
+          <PrivateRoute>
+            <CreateWorkout />
           </PrivateRoute>
         }
       />

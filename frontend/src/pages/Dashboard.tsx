@@ -33,10 +33,16 @@ export default function Dashboard() {
         <div className="flex items-center gap-4">
           <span className="text-gray-400 text-sm">{user?.name}</span>
           <Link
+            to="/workouts/new"
+            className="border border-gray-700 hover:border-green-500/60 text-gray-300 hover:text-green-400 px-4 py-2 rounded-lg text-sm transition-colors"
+          >
+            Criar manualmente
+          </Link>
+          <Link
             to="/chat"
             className="bg-green-500 hover:bg-green-400 text-gray-950 font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
           >
-            Novo treino com IA
+            Criar com IA
           </Link>
           <button
             onClick={handleLogout}
@@ -57,13 +63,21 @@ export default function Dashboard() {
           <div className="text-gray-400 text-center py-12">Carregando...</div>
         ) : workouts?.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-gray-400 mb-4">Você ainda não tem treinos salvos.</p>
-            <Link
-              to="/chat"
-              className="bg-green-500 hover:bg-green-400 text-gray-950 font-semibold px-6 py-3 rounded-lg transition-colors"
-            >
-              Criar treino com IA
-            </Link>
+            <p className="text-gray-400 mb-6">Você ainda não tem treinos salvos.</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                to="/chat"
+                className="bg-green-500 hover:bg-green-400 text-gray-950 font-semibold px-6 py-3 rounded-lg transition-colors"
+              >
+                Criar com IA
+              </Link>
+              <Link
+                to="/workouts/new"
+                className="border border-gray-700 hover:border-green-500/60 text-gray-300 hover:text-green-400 px-6 py-3 rounded-lg transition-colors"
+              >
+                Criar manualmente
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
