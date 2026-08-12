@@ -4,6 +4,7 @@ import { useAuthStore } from './store/authStore'
 import Chat from './pages/Chat'
 import CreateWorkout from './pages/CreateWorkout'
 import Dashboard from './pages/Dashboard'
+import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import WorkoutDetail from './pages/WorkoutDetail'
@@ -26,6 +27,14 @@ export default function App() {
       <Route path="/register" element={<Register />} />
       <Route
         path="/"
+        element={
+          <PrivateRoute>
+            <Home />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/workouts"
         element={
           <PrivateRoute>
             <Dashboard />

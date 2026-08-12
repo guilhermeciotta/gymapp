@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Workout;
+use App\Models\WorkoutDay;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,6 +29,7 @@ class WorkoutController extends Controller
             'days' => 'nullable|array',
             'days.*.name' => 'required|string|max:255',
             'days.*.order' => 'nullable|integer',
+            'days.*.dia_semana' => 'nullable|in:domingo,segunda,terca,quarta,quinta,sexta,sabado',
             'days.*.exercises' => 'nullable|array',
             'days.*.exercises.*.name' => 'required|string|max:255',
             'days.*.exercises.*.sets' => 'nullable|integer',
@@ -47,6 +49,7 @@ class WorkoutController extends Controller
             $day = $workout->days()->create([
                 'name' => $dayData['name'],
                 'order' => $dayData['order'] ?? 0,
+                'dia_semana' => $dayData['dia_semana'] ?? WorkoutDay::parseDiaSemanaFromName($dayData['name']),
             ]);
 
             foreach ($dayData['exercises'] ?? [] as $exerciseData) {

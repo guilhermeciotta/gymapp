@@ -33,6 +33,12 @@ export default function Dashboard() {
         <div className="flex items-center gap-4">
           <span className="text-gray-400 text-sm">{user?.name}</span>
           <Link
+            to="/"
+            className="text-gray-400 hover:text-green-400 text-sm transition-colors"
+          >
+            Início
+          </Link>
+          <Link
             to="/workouts/new"
             className="border border-gray-700 hover:border-green-500/60 text-gray-300 hover:text-green-400 px-4 py-2 rounded-lg text-sm transition-colors"
           >

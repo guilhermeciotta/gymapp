@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Conversation;
+use App\Models\WorkoutDay;
 use App\Services\AIService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -122,6 +123,7 @@ class ChatController extends Controller
             $day = $workout->days()->create([
                 'name' => $dayData['name'],
                 'order' => $dayData['order'] ?? $index,
+                'dia_semana' => $dayData['dia_semana'] ?? WorkoutDay::parseDiaSemanaFromName($dayData['name']),
             ]);
 
             foreach ($dayData['exercises'] ?? [] as $exIndex => $exerciseData) {

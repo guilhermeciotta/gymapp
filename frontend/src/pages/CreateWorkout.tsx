@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../lib/axios'
+import { WEEKDAYS } from '../lib/weekdays'
 
 interface ExerciseForm {
   id: string
@@ -15,6 +16,7 @@ interface ExerciseForm {
 interface DayForm {
   id: string
   name: string
+  diaSemana: string
   exercises: ExerciseForm[]
 }
 
@@ -23,7 +25,7 @@ function newExercise(): ExerciseForm {
 }
 
 function newDay(index: number): DayForm {
-  return { id: crypto.randomUUID(), name: `Dia ${index + 1}`, exercises: [newExercise()] }
+  return { id: crypto.randomUUID(), name: `Dia ${index + 1}`, diaSemana: '', exercises: [newExercise()] }
 }
 
 export default function CreateWorkout() {
@@ -49,6 +51,9 @@ export default function CreateWorkout() {
 
   const updateDayName = (dayId: string, value: string) =>
     setDays((d) => d.map((day) => (day.id === dayId ? { ...day, name: value } : day)))
+
+  const updateDayWeekday = (dayId: string, value: string) =>
+    setDays((d) => d.map((day) => (day.id === dayId ? { ...day, diaSemana: value } : day)))
 
   const addExercise = (dayId: string) =>
     setDays((d) =>
@@ -90,6 +95,7 @@ export default function CreateWorkout() {
       days: days.map((day, di) => ({
         name: day.name.trim() || `Dia ${di + 1}`,
         order: di,
+        dia_semana: day.diaSemana || null,
         exercises: day.exercises
           .filter((e) => e.name.trim())
           .map((e, ei) => ({
@@ -159,6 +165,18 @@ export default function CreateWorkout() {
                   placeholder={`Dia ${dayIndex + 1}`}
                   className="flex-1 bg-transparent text-green-400 font-semibold focus:outline-none placeholder-green-700"
                 />
+                <select
+                  value={day.diaSemana}
+                  onChange={(e) => updateDayWeekday(day.id, e.target.value)}
+                  className="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-green-500 transition-colors"
+                >
+                  <option value="">Sem dia fixo</option>
+                  {WEEKDAYS.map((w) => (
+                    <option key={w.value} value={w.value}>
+                      {w.label}
+                    </option>
+                  ))}
+                </select>
                 {days.length > 1 && (
                   <button
                     type="button"

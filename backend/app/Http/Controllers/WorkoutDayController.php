@@ -16,7 +16,10 @@ class WorkoutDayController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'order' => 'nullable|integer',
+            'dia_semana' => 'nullable|in:domingo,segunda,terca,quarta,quinta,sexta,sabado',
         ]);
+
+        $data['dia_semana'] = $data['dia_semana'] ?? WorkoutDay::parseDiaSemanaFromName($data['name']);
 
         $day = $workout->days()->create($data);
 
@@ -30,6 +33,7 @@ class WorkoutDayController extends Controller
         $data = $request->validate([
             'name' => 'sometimes|string|max:255',
             'order' => 'nullable|integer',
+            'dia_semana' => 'nullable|in:domingo,segunda,terca,quarta,quinta,sexta,sabado',
         ]);
 
         $day->update($data);

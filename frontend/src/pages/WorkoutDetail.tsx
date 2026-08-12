@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import api from '../lib/axios'
+import { weekdayLabel } from '../lib/weekdays'
 
 interface Exercise {
   id: number
@@ -16,6 +17,7 @@ interface WorkoutDay {
   id: number
   name: string
   order: number
+  dia_semana: string | null
   exercises: Exercise[]
 }
 
@@ -83,8 +85,11 @@ export default function WorkoutDetail() {
         <div className="space-y-4 mt-6">
           {workout.days.map((day) => (
             <div key={day.id} className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-              <div className="px-5 py-3 bg-gray-800">
+              <div className="px-5 py-3 bg-gray-800 flex items-center justify-between">
                 <h2 className="font-semibold text-green-400">{day.name}</h2>
+                {day.dia_semana && (
+                  <span className="text-xs text-gray-400">{weekdayLabel(day.dia_semana)}</span>
+                )}
               </div>
               <div className="divide-y divide-gray-800">
                 {day.exercises.map((ex) => (
