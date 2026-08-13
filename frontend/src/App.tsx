@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
+import ActiveSession from './pages/ActiveSession'
 import Chat from './pages/Chat'
 import CreateWorkout from './pages/CreateWorkout'
 import Dashboard from './pages/Dashboard'
@@ -70,6 +71,14 @@ export default function App() {
         element={
           <PrivateRoute>
             <Chat />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/sessions/:id"
+        element={
+          <PrivateRoute>
+            <ActiveSession />
           </PrivateRoute>
         }
       />
